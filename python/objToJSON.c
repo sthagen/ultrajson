@@ -1,5 +1,5 @@
 /*
-Developed by ESN, an Electronic Arts Inc. studio. 
+Developed by ESN, an Electronic Arts Inc. studio.
 Copyright (c) 2014, Electronic Arts Inc.
 All rights reserved.
 
@@ -17,7 +17,7 @@ derived from this software without specific prior written permission.
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
 ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
 WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-DISCLAIMED. IN NO EVENT SHALL ELECTRONIC ARTS INC. BE LIABLE 
+DISCLAIMED. IN NO EVENT SHALL ELECTRONIC ARTS INC. BE LIABLE
 FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
 (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
 LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
@@ -36,7 +36,7 @@ http://www.opensource.apple.com/source/tcl/tcl-14/tcl/license.terms
 * Copyright (c) 1994 Sun Microsystems, Inc.
 */
 
-#include "py_defines.h"
+#include <Python.h>
 #include <stdio.h>
 #include <ultrajson.h>
 
@@ -98,14 +98,14 @@ void initObjToJSON(void)
 static void *PyIntToINT64(JSOBJ _obj, JSONTypeContext *tc, void *outValue, size_t *_outLen)
 {
   PyObject *obj = (PyObject *) _obj;
-  *((JSINT64 *) outValue) = PyInt_AS_LONG (obj);
+  *((JSINT64 *) outValue) = PyLong_AsLong (obj);
   return NULL;
 }
 #else
 static void *PyIntToINT32(JSOBJ _obj, JSONTypeContext *tc, void *outValue, size_t *_outLen)
 {
   PyObject *obj = (PyObject *) _obj;
-  *((JSINT32 *) outValue) = PyInt_AS_LONG (obj);
+  *((JSINT32 *) outValue) = PyLong_AsLong (obj);
   return NULL;
 }
 #endif
@@ -132,15 +132,14 @@ static void *PyFloatToDOUBLE(JSOBJ _obj, JSONTypeContext *tc, void *outValue, si
 static void *PyStringToUTF8(JSOBJ _obj, JSONTypeContext *tc, void *outValue, size_t *_outLen)
 {
   PyObject *obj = (PyObject *) _obj;
-  *_outLen = PyString_GET_SIZE(obj);
-  return PyString_AS_STRING(obj);
+  *_outLen = PyBytes_GET_SIZE(obj);
+  return PyBytes_AS_STRING(obj);
 }
 
 static void *PyUnicodeToUTF8(JSOBJ _obj, JSONTypeContext *tc, void *outValue, size_t *_outLen)
 {
   PyObject *obj = (PyObject *) _obj;
   PyObject *newObj;
-#if (PY_VERSION_HEX >= 0x03030000)
   if (PyUnicode_IS_COMPACT_ASCII(obj))
   {
     Py_ssize_t len;
@@ -148,7 +147,6 @@ static void *PyUnicodeToUTF8(JSOBJ _obj, JSONTypeContext *tc, void *outValue, si
     *_outLen = len;
     return data;
   }
-#endif
   newObj = PyUnicode_AsUTF8String(obj);
   if(!newObj)
   {
@@ -157,8 +155,8 @@ static void *PyUnicodeToUTF8(JSOBJ _obj, JSONTypeContext *tc, void *outValue, si
 
   GET_TC(tc)->newObj = newObj;
 
-  *_outLen = PyString_GET_SIZE(newObj);
-  return PyString_AS_STRING(newObj);
+  *_outLen = PyBytes_GET_SIZE(newObj);
+  return PyBytes_AS_STRING(newObj);
 }
 
 static void *PyRawJSONToUTF8(JSOBJ _obj, JSONTypeContext *tc, void *outValue, size_t *_outLen)
@@ -266,20 +264,18 @@ static int Dict_iterNext(JSOBJ obj, JSONTypeContext *tc)
     Py_DECREF(itemNameTmp);
   }
   else
-  if (!PyString_Check(GET_TC(tc)->itemName))
+  if (!PyBytes_Check(GET_TC(tc)->itemName))
   {
     if (UNLIKELY(GET_TC(tc)->itemName == Py_None))
     {
-      GET_TC(tc)->itemName = PyString_FromString("null");
+      GET_TC(tc)->itemName = PyUnicode_FromString("null");
       return 1;
     }
 
     GET_TC(tc)->itemName = PyObject_Str(GET_TC(tc)->itemName);
-#if PY_MAJOR_VERSION >= 3
     itemNameTmp = GET_TC(tc)->itemName;
     GET_TC(tc)->itemName = PyUnicode_AsUTF8String (GET_TC(tc)->itemName);
     Py_DECREF(itemNameTmp);
-#endif
   }
   else
   {
@@ -308,17 +304,15 @@ static JSOBJ Dict_iterGetValue(JSOBJ obj, JSONTypeContext *tc)
 
 static char *Dict_iterGetName(JSOBJ obj, JSONTypeContext *tc, size_t *outLen)
 {
-  *outLen = PyString_GET_SIZE(GET_TC(tc)->itemName);
-  return PyString_AS_STRING(GET_TC(tc)->itemName);
+  *outLen = PyBytes_GET_SIZE(GET_TC(tc)->itemName);
+  return PyBytes_AS_STRING(GET_TC(tc)->itemName);
 }
 
 static int SortedDict_iterNext(JSOBJ obj, JSONTypeContext *tc)
 {
   PyObject *items = NULL, *item = NULL, *key = NULL, *value = NULL;
   Py_ssize_t i, nitems;
-#if PY_MAJOR_VERSION >= 3
   PyObject* keyTmp;
-#endif
 
   // Upon first call, obtain a list of the keys and sort them. This follows the same logic as the
   // stanard library's _json.c sort_keys handler.
@@ -355,14 +349,12 @@ static int SortedDict_iterNext(JSOBJ obj, JSONTypeContext *tc)
       {
         key = PyUnicode_AsUTF8String(key);
       }
-      else if (!PyString_Check(key))
+      else if (!PyBytes_Check(key))
       {
         key = PyObject_Str(key);
-#if PY_MAJOR_VERSION >= 3
         keyTmp = key;
         key = PyUnicode_AsUTF8String(key);
         Py_DECREF(keyTmp);
-#endif
       }
       else
       {
@@ -421,8 +413,8 @@ static JSOBJ SortedDict_iterGetValue(JSOBJ obj, JSONTypeContext *tc)
 
 static char *SortedDict_iterGetName(JSOBJ obj, JSONTypeContext *tc, size_t *outLen)
 {
-  *outLen = PyString_GET_SIZE(GET_TC(tc)->itemName);
-  return PyString_AS_STRING(GET_TC(tc)->itemName);
+  *outLen = PyBytes_GET_SIZE(GET_TC(tc)->itemName);
+  return PyBytes_AS_STRING(GET_TC(tc)->itemName);
 }
 
 static void SetupDictIter(PyObject *dictObj, TypeContext *pc, JSONObjectEncoder *enc)
@@ -522,7 +514,7 @@ static void Object_beginTypeContext (JSOBJ _obj, JSONTypeContext *tc, JSONObject
     return;
   }
   else
-  if (PyInt_Check(obj))
+  if (PyLong_Check(obj))
   {
     PRINTMARK();
 #ifdef _LP64
@@ -533,11 +525,19 @@ static void Object_beginTypeContext (JSOBJ _obj, JSONTypeContext *tc, JSONObject
     return;
   }
   else
-  if (PyString_Check(obj))
+  if (UNLIKELY(PyBytes_Check(obj)))
   {
     PRINTMARK();
-    pc->PyTypeToJSON = PyStringToUTF8; tc->type = JT_UTF8;
-    return;
+    if (enc->rejectBytes)
+    {
+      PyErr_Format (PyExc_TypeError, "reject_bytes is on and '%s' is bytes", PyBytes_AS_STRING(obj));
+      goto INVALID;
+    }
+    else
+    {
+      pc->PyTypeToJSON = PyStringToUTF8; tc->type = JT_UTF8;
+      return;
+    }
   }
   else
   if (PyUnicode_Check(obj))
@@ -644,7 +644,7 @@ ISITERABLE:
       goto INVALID;
     }
 
-    if (!PyString_Check(toJSONResult) && !PyUnicode_Check(toJSONResult))
+    if (!PyBytes_Check(toJSONResult) && !PyUnicode_Check(toJSONResult))
     {
       Py_DECREF(toJSONResult);
       PyErr_Format (PyExc_TypeError, "expected string");
@@ -662,13 +662,9 @@ ISITERABLE:
   PyErr_Clear();
 
   objRepr = PyObject_Repr(obj);
-#if PY_MAJOR_VERSION >= 3
   PyObject* str = PyUnicode_AsEncodedString(objRepr, "utf-8", "~E~");
-  PyErr_Format (PyExc_TypeError, "%s is not JSON serializable", PyString_AS_STRING(str));
+  PyErr_Format (PyExc_TypeError, "%s is not JSON serializable", PyBytes_AS_STRING(str));
   Py_XDECREF(str);
-#else
-  PyErr_Format (PyExc_TypeError, "%s is not JSON serializable", PyString_AS_STRING(objRepr));
-#endif
   Py_DECREF(objRepr);
 
 INVALID:
@@ -751,16 +747,19 @@ static char *Object_iterGetName(JSOBJ obj, JSONTypeContext *tc, size_t *outLen)
 
 PyObject* objToJSON(PyObject* self, PyObject *args, PyObject *kwargs)
 {
-  static char *kwlist[] = { "obj", "ensure_ascii", "encode_html_chars", "escape_forward_slashes", "sort_keys", "indent", NULL };
+  static char *kwlist[] = { "obj", "ensure_ascii", "encode_html_chars", "escape_forward_slashes", "sort_keys", "indent", "allow_nan", "reject_bytes", NULL };
 
   char buffer[65536];
   char *ret;
+  const char *csNan = NULL, *csInf = NULL;
   PyObject *newobj;
   PyObject *oinput = NULL;
   PyObject *oensureAscii = NULL;
   PyObject *oencodeHTMLChars = NULL;
   PyObject *oescapeForwardSlashes = NULL;
   PyObject *osortKeys = NULL;
+  int allowNan = -1;
+  int orejectBytes = -1;
 
   JSONObjectEncoder encoder =
   {
@@ -785,13 +784,15 @@ PyObject* objToJSON(PyObject* self, PyObject *args, PyObject *kwargs)
     1, //escapeForwardSlashes
     0, //sortKeys
     0, //indent
+    1, //allowNan
+    1, //rejectBytes
     NULL, //prv
   };
 
 
   PRINTMARK();
 
-  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O|OOOOi", kwlist, &oinput, &oensureAscii, &oencodeHTMLChars, &oescapeForwardSlashes, &osortKeys, &encoder.indent))
+  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O|OOOOpii", kwlist, &oinput, &oensureAscii, &oencodeHTMLChars, &oescapeForwardSlashes, &osortKeys, &encoder.indent, &allowNan, &orejectBytes))
   {
     return NULL;
   }
@@ -816,8 +817,25 @@ PyObject* objToJSON(PyObject* self, PyObject *args, PyObject *kwargs)
     encoder.sortKeys = 1;
   }
 
+  if (allowNan != -1)
+  {
+    encoder.allowNan = allowNan;
+  }
+
+  if (encoder.allowNan)
+  {
+    csInf = "Inf";
+    csNan = "NaN";
+  }
+
+  if (orejectBytes != -1)
+  {
+    encoder.rejectBytes = orejectBytes;
+  }
+
+
   dconv_d2s_init(DCONV_D2S_EMIT_TRAILING_DECIMAL_POINT | DCONV_D2S_EMIT_TRAILING_ZERO_AFTER_POINT,
-                 NULL, NULL, 'e', DCONV_DECIMAL_IN_SHORTEST_LOW, DCONV_DECIMAL_IN_SHORTEST_HIGH, 0, 0);
+                 csInf, csNan, 'e', DCONV_DECIMAL_IN_SHORTEST_LOW, DCONV_DECIMAL_IN_SHORTEST_HIGH, 0, 0);
 
   PRINTMARK();
   ret = JSON_EncodeObject (oinput, &encoder, buffer, sizeof (buffer));
@@ -841,7 +859,7 @@ PyObject* objToJSON(PyObject* self, PyObject *args, PyObject *kwargs)
     return NULL;
   }
 
-  newobj = PyString_FromString (ret);
+  newobj = PyUnicode_FromString (ret);
 
   if (ret != buffer)
   {

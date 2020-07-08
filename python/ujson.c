@@ -1,5 +1,5 @@
 /*
-Developed by ESN, an Electronic Arts Inc. studio. 
+Developed by ESN, an Electronic Arts Inc. studio.
 Copyright (c) 2014, Electronic Arts Inc.
 All rights reserved.
 
@@ -17,7 +17,7 @@ derived from this software without specific prior written permission.
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
 ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
 WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-DISCLAIMED. IN NO EVENT SHALL ELECTRONIC ARTS INC. BE LIABLE 
+DISCLAIMED. IN NO EVENT SHALL ELECTRONIC ARTS INC. BE LIABLE
 FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
 (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
 LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
@@ -36,7 +36,7 @@ http://www.opensource.apple.com/source/tcl/tcl-14/tcl/license.terms
 * Copyright (c) 1994 Sun Microsystems, Inc.
 */
 
-#include "py_defines.h"
+#include <Python.h>
 #include "version.h"
 
 /* objToJSON */
@@ -53,7 +53,11 @@ PyObject* objToJSONFile(PyObject* self, PyObject *args, PyObject *kwargs);
 PyObject* JSONFileToObj(PyObject* self, PyObject *args, PyObject *kwargs);
 
 
-#define ENCODER_HELP_TEXT "Use ensure_ascii=false to output UTF-8. Set encode_html_chars=True to encode < > & as unicode escape sequences. Set escape_forward_slashes=False to prevent escaping / characters."
+#define ENCODER_HELP_TEXT "Use ensure_ascii=false to output UTF-8. " \
+    "Set encode_html_chars=True to encode < > & as unicode escape sequences. "\
+    "Set escape_forward_slashes=False to prevent escaping / characters." \
+    "Set allow_nan=False to raise an exception when NaN or Inf would be serialized." \
+    "Set reject_bytes=True to raise TypeError on bytes."
 
 static PyMethodDef ujsonMethods[] = {
   {"encode", (PyCFunction) objToJSON, METH_VARARGS | METH_KEYWORDS, "Converts arbitrary object recursively into JSON. " ENCODER_HELP_TEXT},
@@ -64,8 +68,6 @@ static PyMethodDef ujsonMethods[] = {
   {"load", (PyCFunction) JSONFileToObj, METH_VARARGS | METH_KEYWORDS, "Converts JSON as file to dict object structure."},
   {NULL, NULL, 0, NULL}       /* Sentinel */
 };
-
-#if PY_MAJOR_VERSION >= 3
 
 static struct PyModuleDef moduledef = {
   PyModuleDef_HEAD_INIT,
@@ -79,35 +81,21 @@ static struct PyModuleDef moduledef = {
   NULL            /* m_free */
 };
 
-#define PYMODINITFUNC       PyObject *PyInit_ujson(void)
-#define PYMODULE_CREATE()   PyModule_Create(&moduledef)
-#define MODINITERROR        return NULL
-
-#else
-
-#define PYMODINITFUNC       PyMODINIT_FUNC initujson(void)
-#define PYMODULE_CREATE()   Py_InitModule("ujson", ujsonMethods)
-#define MODINITERROR        return
-
-#endif
-
-PYMODINITFUNC
+PyObject *PyInit_ujson(void)
 {
   PyObject *module;
   PyObject *version_string;
 
   initObjToJSON();
-  module = PYMODULE_CREATE();
+  module = PyModule_Create(&moduledef);
 
   if (module == NULL)
   {
-    MODINITERROR;
+    return NULL;
   }
 
-  version_string = PyString_FromString (UJSON_VERSION);
+  version_string = PyUnicode_FromString (UJSON_VERSION);
   PyModule_AddObject (module, "__version__", version_string);
 
-#if PY_MAJOR_VERSION >= 3
   return module;
-#endif
 }

@@ -1,5 +1,5 @@
 /*
-Developed by ESN, an Electronic Arts Inc. studio. 
+Developed by ESN, an Electronic Arts Inc. studio.
 Copyright (c) 2014, Electronic Arts Inc.
 All rights reserved.
 
@@ -17,7 +17,7 @@ derived from this software without specific prior written permission.
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
 ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
 WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-DISCLAIMED. IN NO EVENT SHALL ELECTRONIC ARTS INC. BE LIABLE 
+DISCLAIMED. IN NO EVENT SHALL ELECTRONIC ARTS INC. BE LIABLE
 FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
 (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
 LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
@@ -36,7 +36,7 @@ http://www.opensource.apple.com/source/tcl/tcl-14/tcl/license.terms
  * Copyright (c) 1994 Sun Microsystems, Inc.
 */
 
-#include "py_defines.h"
+#include <Python.h>
 #include <ultrajson.h>
 
 
@@ -90,7 +90,7 @@ static JSOBJ Object_newArray(void *prv)
 
 static JSOBJ Object_newInteger(void *prv, JSINT32 value)
 {
-  return PyInt_FromLong( (long) value);
+  return PyLong_FromLong( (long) value);
 }
 
 static JSOBJ Object_newLong(void *prv, JSINT64 value)
@@ -147,7 +147,7 @@ PyObject* JSONToObj(PyObject* self, PyObject *args, PyObject *kwargs)
       return NULL;
   }
 
-  if (PyString_Check(arg))
+  if (PyBytes_Check(arg))
   {
       sarg = arg;
   }
@@ -172,7 +172,7 @@ PyObject* JSONToObj(PyObject* self, PyObject *args, PyObject *kwargs)
 
   dconv_s2d_init(DCONV_S2D_ALLOW_TRAILING_JUNK, 0.0, 0.0, "Infinity", "NaN");
 
-  ret = JSON_DecodeObject(&decoder, PyString_AS_STRING(sarg), PyString_GET_SIZE(sarg));
+  ret = JSON_DecodeObject(&decoder, PyBytes_AS_STRING(sarg), PyBytes_GET_SIZE(sarg));
 
   dconv_s2d_free();
 

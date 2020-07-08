@@ -1,8 +1,5 @@
-﻿# coding=UTF-8
-from __future__ import print_function, unicode_literals
-
 import decimal
-import functools
+import io
 import json
 import math
 import re
@@ -10,13 +7,7 @@ import sys
 from collections import OrderedDict
 
 import pytest
-import six
 import ujson
-from six.moves import range, zip
-
-json_unicode = (
-    functools.partial(json.dumps, encoding="utf-8") if six.PY2 else json.dumps
-)
 
 
 def assert_almost_equal(a, b):
@@ -144,7 +135,7 @@ def test_encode_control_escaping():
     enc = ujson.encode(test_input)
     dec = ujson.decode(enc)
     assert test_input == dec
-    assert enc == json_unicode(test_input)
+    assert enc == json.dumps(test_input)
 
 
 # Characters outside of Basic Multilingual Plane(larger than
@@ -164,11 +155,8 @@ def test_encode_unicode_bmp():
     decoded = ujson.loads(encoded)
     assert s == decoded
 
-    # ujson outputs an UTF-8 encoded str object
-    if six.PY2:
-        encoded = ujson.dumps(s, ensure_ascii=False).decode("utf-8")
-    else:
-        encoded = ujson.dumps(s, ensure_ascii=False)
+    # ujson outputs a UTF-8 encoded str object
+    encoded = ujson.dumps(s, ensure_ascii=False)
 
     # json outputs an unicode object
     encoded_json = json.dumps(s, ensure_ascii=False)
@@ -187,11 +175,8 @@ def test_encode_symbols():
     decoded = ujson.loads(encoded)
     assert s == decoded
 
-    # ujson outputs an UTF-8 encoded str object
-    if six.PY2:
-        encoded = ujson.dumps(s, ensure_ascii=False).decode("utf-8")
-    else:
-        encoded = ujson.dumps(s, ensure_ascii=False)
+    # ujson outputs a UTF-8 encoded str object
+    encoded = ujson.dumps(s, ensure_ascii=False)
 
     # json outputs an unicode object
     encoded_json = json.dumps(s, ensure_ascii=False)
@@ -228,6 +213,9 @@ def test_encode_dict_conversion():
     assert test_input == ujson.decode(output)
 
 
+@pytest.mark.skipif(
+    hasattr(sys, "pypy_version_info"), reason="PyPy uses incompatible GC"
+)
 def test_encode_dict_values_ref_counting():
     import gc
 
@@ -239,6 +227,9 @@ def test_encode_dict_values_ref_counting():
     assert ref_count == sys.getrefcount(value)
 
 
+@pytest.mark.skipif(
+    hasattr(sys, "pypy_version_info"), reason="PyPy uses incompatible GC"
+)
 def test_encode_dict_key_ref_counting():
     import gc
 
@@ -251,9 +242,7 @@ def test_encode_dict_key_ref_counting():
 
 
 def test_encode_to_utf8():
-    test_input = b"\xe6\x97\xa5\xd1\x88"
-    if not six.PY2:
-        test_input = test_input.decode("utf-8")
+    test_input = b"\xe6\x97\xa5\xd1\x88".decode("utf-8")
     enc = ujson.encode(test_input, ensure_ascii=False)
     dec = ujson.decode(enc)
     assert enc == json.dumps(test_input, ensure_ascii=False)
@@ -300,7 +289,7 @@ def test_decode_dict():
 def test_encode_unicode_4_bytes_utf8_fail():
     test_input = b"\xfd\xbf\xbf\xbf\xbf\xbf"
     with pytest.raises(OverflowError):
-        ujson.encode(test_input)
+        ujson.encode(test_input, reject_bytes=False)
 
 
 def test_encode_null_character():
@@ -325,7 +314,7 @@ def test_decode_null_character():
 
 
 def test_dump_to_file():
-    f = six.StringIO()
+    f = io.StringIO()
     ujson.dump([1, 2, 3], f)
     assert "[1,2,3]" == f.getvalue()
 
@@ -349,7 +338,7 @@ def test_dump_file_args_error():
 
 
 def test_load_file():
-    f = six.StringIO("[1,2,3,4]")
+    f = io.StringIO("[1,2,3,4]")
     assert [1, 2, 3, 4] == ujson.load(f)
 
 
@@ -393,22 +382,15 @@ def test_decode_number_with32bit_sign_bit():
 
 def test_encode_big_escape():
     for x in range(10):
-        if six.PY2:
-            base = "\xc3\xa5"
-        else:
-            base = "\u00e5".encode("utf-8")
+        base = "\u00e5".encode()
         test_input = base * 1024 * 1024 * 2
-        ujson.encode(test_input)
+        ujson.encode(test_input, reject_bytes=False)
 
 
 def test_decode_big_escape():
     for x in range(10):
-        if six.PY2:
-            base = "\xc3\xa5"
-            quote = '"'
-        else:
-            base = "\u00e5".encode("utf-8")
-            quote = b'"'
+        base = "\u00e5".encode()
+        quote = b'"'
         test_input = quote + (base * 1024 * 1024 * 2) + quote
         ujson.decode(test_input)
 
@@ -489,7 +471,6 @@ def test_decode_array_empty():
     assert [] == obj
 
 
-@pytest.mark.skipif(six.PY2, reason="Only raises on Python 3")
 def test_encoding_invalid_unicode_character():
     s = "\udc7f"
     with pytest.raises(UnicodeEncodeError):
@@ -622,19 +603,11 @@ class SomeObject:
         return "Some Object"
 
 
-if sys.version_info.major == 2:
-    EMPTY_SET_ERROR = "set([]) is not JSON serializable"
-    FILLED_SET_ERROR = "set([1, 2, 3]) is not JSON serializable"
-else:
-    EMPTY_SET_ERROR = "set() is not JSON serializable"
-    FILLED_SET_ERROR = "{1, 2, 3} is not JSON serializable"
-
-
 @pytest.mark.parametrize(
     "test_input, expected_exception, expected_message",
     [
-        (set(), TypeError, EMPTY_SET_ERROR),
-        ({1, 2, 3}, TypeError, FILLED_SET_ERROR),
+        (set(), TypeError, "set() is not JSON serializable"),
+        ({1, 2, 3}, TypeError, "{1, 2, 3} is not JSON serializable"),
         (SomeObject(), TypeError, "Some Object is not JSON serializable"),
     ],
 )
@@ -642,6 +615,20 @@ def test_dumps_raises(test_input, expected_exception, expected_message):
     with pytest.raises(expected_exception) as e:
         ujson.dumps(test_input)
     assert str(e.value) == expected_message
+
+
+@pytest.mark.parametrize(
+    "test_input, expected_exception",
+    [
+        (float("nan"), OverflowError),
+        (float("inf"), OverflowError),
+        (-float("inf"), OverflowError),
+        (12839128391289382193812939, OverflowError),
+    ],
+)
+def test_encode_raises_allow_nan(test_input, expected_exception):
+    with pytest.raises(expected_exception):
+        ujson.dumps(test_input, allow_nan=False)
 
 
 @pytest.mark.parametrize(
@@ -675,6 +662,9 @@ def test_encode_no_assert(test_input):
     [
         (1.0, "1.0"),
         (OrderedDict([(1, 1), (0, 0), (8, 8), (2, 2)]), '{"1":1,"0":0,"8":8,"2":2}'),
+        ({"a": float("NaN")}, '{"a":NaN}'),
+        ({"a": float("inf")}, '{"a":Inf}'),
+        ({"a": -float("inf")}, '{"a":-Inf}'),
     ],
 )
 def test_encode(test_input, expected):
@@ -712,20 +702,6 @@ def test_encode_long_conversion(test_input):
     assert test_input == ujson.decode(output)
 
 
-@pytest.mark.parametrize(
-    "test_input, expected",
-    [
-        (float("nan"), OverflowError),
-        (float("inf"), OverflowError),
-        (-float("inf"), OverflowError),
-        (12839128391289382193812939, OverflowError),
-    ],
-)
-def test_encode_raises(test_input, expected):
-    with pytest.raises(expected):
-        ujson.encode(test_input)
-
-
 @pytest.mark.parametrize("test_input", [[[[[]]]], 31337, -31337, None, True, False])
 def test_encode_decode(test_input):
     output = ujson.encode(test_input)
@@ -749,7 +725,7 @@ def test_encode_unicode(test_input):
     enc = ujson.encode(test_input)
     dec = ujson.decode(enc)
 
-    assert enc == json_unicode(test_input)
+    assert enc == json.dumps(test_input)
     assert dec == json.loads(enc)
 
 
@@ -782,6 +758,23 @@ def test_encode_unicode(test_input):
 )
 def test_loads(test_input, expected):
     assert ujson.loads(test_input) == expected
+
+
+def test_reject_bytes_default():
+    data = {"a": b"b"}
+    with pytest.raises(TypeError):
+        ujson.dumps(data)
+
+
+def test_reject_bytes_true():
+    data = {"a": b"b"}
+    with pytest.raises(TypeError):
+        ujson.dumps(data, reject_bytes=True)
+
+
+def test_reject_bytes_false():
+    data = {"a": b"b"}
+    assert ujson.dumps(data, reject_bytes=False) == '{"a":"b"}'
 
 
 """
