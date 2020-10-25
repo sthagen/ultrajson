@@ -249,6 +249,13 @@ def test_encode_to_utf8():
     assert dec == json.loads(enc)
 
 
+def test_encode_indent():
+    test_input = '{\n    "obj": 31337\n}'
+    obj = ujson.decode(test_input)
+    output = ujson.encode(obj, indent=4)
+    assert test_input == output
+
+
 def test_decode_from_unicode():
     test_input = '{"obj": 31337}'
     dec1 = ujson.decode(test_input)
@@ -498,7 +505,11 @@ def test_decode_no_assert(test_input):
 
 
 @pytest.mark.parametrize(
-    "test_input, expected", [("31337", 31337), ("-31337", -31337)],
+    "test_input, expected",
+    [
+        ("31337", 31337),
+        ("-31337", -31337),
+    ],
 )
 def test_decode(test_input, expected):
     assert ujson.decode(test_input) == expected
@@ -682,7 +693,11 @@ def test_encode(test_input, expected):
             9223372036854775807,
             9223372036854775807,
         ],
-        [18446744073709551615, 18446744073709551615, 18446744073709551615],
+        [
+            18446744073709551615,
+            18446744073709551615,
+            18446744073709551615,
+        ],
     ],
 )
 def test_encode_list_long_conversion(test_input):
@@ -692,7 +707,11 @@ def test_encode_list_long_conversion(test_input):
 
 
 @pytest.mark.parametrize(
-    "test_input", [9223372036854775807, 18446744073709551615],
+    "test_input",
+    [
+        9223372036854775807,
+        18446744073709551615,
+    ],
 )
 def test_encode_long_conversion(test_input):
     output = ujson.encode(test_input)
@@ -702,7 +721,17 @@ def test_encode_long_conversion(test_input):
     assert test_input == ujson.decode(output)
 
 
-@pytest.mark.parametrize("test_input", [[[[[]]]], 31337, -31337, None, True, False])
+@pytest.mark.parametrize(
+    "test_input",
+    [
+        [[[[]]]],
+        31337,
+        -31337,
+        None,
+        True,
+        False,
+    ],
+)
 def test_encode_decode(test_input):
     output = ujson.encode(test_input)
 

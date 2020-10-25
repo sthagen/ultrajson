@@ -29,13 +29,14 @@ UltraJSON
     :alt: Code style: Black
     :target: https://github.com/psf/black
 
-UltraJSON is an ultra fast JSON encoder and decoder written in pure C with bindings for Python 3.5+.
+UltraJSON is an ultra fast JSON encoder and decoder written in pure C with bindings for
+Python 3.6+.
 
-To install it just run pip as usual:
+Install with pip:
 
 .. code-block:: sh
 
-    $ pip install ujson
+    $ python -m pip install ujson
 
 ============
 Usage
@@ -48,7 +49,7 @@ May be used as a drop in replacement for most other JSON parsers for Python:
     >>> ujson.dumps([{"key": "value"}, 81, True])
     '[{"key":"value"},81,true]'
     >>> ujson.loads("""[{"key": "value"}, 81, true]""")
-    [{u'key': u'value'}, 81, True]
+    [{'key': 'value'}, 81, True]
 
 ~~~~~~~~~~~~~~~
 Encoder options
@@ -64,14 +65,14 @@ Used to enable special encoding of "unsafe" HTML characters into safer Unicode s
 
 ensure_ascii
 -------------
-Limits output to ASCII and escapes all extended characters above 127. Default is true. If your end format supports UTF-8 setting this option to false is highly recommended to save space:
+Limits output to ASCII and escapes all extended characters above 127. Default is ``True``. If your end format supports UTF-8, setting this option to false is highly recommended to save space:
 
 .. code-block:: python
 
-    >>> ujson.dumps(u"\xe5\xe4\xf6")
+    >>> ujson.dumps("åäö")
     '"\\u00e5\\u00e4\\u00f6"'
-    >>> ujson.dumps(u"\xe5\xe4\xf6", ensure_ascii=False)
-    '"\xc3\xa5\xc3\xa4\xc3\xb6"'
+    >>> ujson.dumps("åäö", ensure_ascii=False)
+    '"åäö"'
 
 escape_forward_slashes
 ----------------------
@@ -80,19 +81,19 @@ Controls whether forward slashes (``/``) are escaped. Default is ``True``:
 .. code-block:: python
 
     >>> ujson.dumps("http://esn.me")
-    '"http:\/\/esn.me"'
+    '"http:\\/\\/esn.me"'
     >>> ujson.dumps("http://esn.me", escape_forward_slashes=False)
     '"http://esn.me"'
 
 indent
 ------
-Controls whether indention ("pretty output") is enabled. Default is ``0`` (disabled):
+Controls whether indentation ("pretty output") is enabled. Default is ``0`` (disabled):
 
 .. code-block:: python
 
     >>> ujson.dumps({"foo": "bar"})
     '{"foo":"bar"}'
-    >>> ujson.dumps({"foo": "bar"}, indent=4)
+    >>> print(ujson.dumps({"foo": "bar"}, indent=4))
     {
         "foo":"bar"
     }
