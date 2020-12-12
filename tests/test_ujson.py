@@ -78,6 +78,12 @@ def test_double_long_decimal_issue():
     assert sut == decoded
 
 
+# NOTE: can't match exponents -9 to -5; Python 0-pads
+@pytest.mark.parametrize("val", [1e-10, 1e-4, 1e10, 1e15, 1e16, 1e30])
+def test_encode_float_string_rep(val):
+    assert ujson.dumps(val) == json.dumps(val)
+
+
 def test_encode_decode_long_decimal():
     sut = {"a": -528656961.4399388}
     encoded = ujson.dumps(sut)
@@ -249,11 +255,21 @@ def test_encode_to_utf8():
     assert dec == json.loads(enc)
 
 
-def test_encode_indent():
-    test_input = '{\n    "obj": 31337\n}'
+@pytest.mark.parametrize(
+    "test_input",
+    [
+        '{\n    "obj": 31337\n}',
+        "{}",
+        "[]",
+        '{\n    "a": {}\n}',
+        "[\n    []\n]",
+    ],
+)
+def test_encode_indent(test_input):
     obj = ujson.decode(test_input)
     output = ujson.encode(obj, indent=4)
     assert test_input == output
+    assert output == json.dumps(obj, indent=4)
 
 
 def test_decode_from_unicode():
@@ -509,6 +525,7 @@ def test_decode_no_assert(test_input):
     [
         ("31337", 31337),
         ("-31337", -31337),
+        ("100000000000000000000.0", 1e20),
     ],
 )
 def test_decode(test_input, expected):
@@ -804,6 +821,11 @@ def test_reject_bytes_true():
 def test_reject_bytes_false():
     data = {"a": b"b"}
     assert ujson.dumps(data, reject_bytes=False) == '{"a":"b"}'
+
+
+def test_encode_none_key():
+    data = {None: None}
+    assert ujson.dumps(data) == '{"null":null}'
 
 
 """

@@ -258,7 +258,9 @@ static int Dict_iterNext(JSOBJ obj, JSONTypeContext *tc)
   {
     if (UNLIKELY(GET_TC(tc)->itemName == Py_None))
     {
-      GET_TC(tc)->itemName = PyUnicode_FromString("null");
+      itemNameTmp = PyUnicode_FromString("null");
+      GET_TC(tc)->itemName = PyUnicode_AsUTF8String(itemNameTmp);
+      Py_DECREF(Py_None);
       return 1;
     }
 
@@ -537,17 +539,17 @@ static void Object_beginTypeContext (JSOBJ _obj, JSONTypeContext *tc, JSONObject
     return;
   }
   else
-  if (PyFloat_Check(obj) || object_is_decimal_type(obj))
-  {
-    PRINTMARK();
-    pc->PyTypeToJSON = PyFloatToDOUBLE; tc->type = JT_DOUBLE;
-    return;
-  }
-  else
   if (obj == Py_None)
   {
     PRINTMARK();
     tc->type = JT_NULL;
+    return;
+  }
+  else
+  if (PyFloat_Check(obj) || object_is_decimal_type(obj))
+  {
+    PRINTMARK();
+    pc->PyTypeToJSON = PyFloatToDOUBLE; tc->type = JT_DOUBLE;
     return;
   }
 
@@ -825,7 +827,7 @@ PyObject* objToJSON(PyObject* self, PyObject *args, PyObject *kwargs)
   }
 
 
-  dconv_d2s_init(DCONV_D2S_EMIT_TRAILING_DECIMAL_POINT | DCONV_D2S_EMIT_TRAILING_ZERO_AFTER_POINT,
+  dconv_d2s_init(DCONV_D2S_EMIT_TRAILING_DECIMAL_POINT | DCONV_D2S_EMIT_TRAILING_ZERO_AFTER_POINT | DCONV_D2S_EMIT_POSITIVE_EXPONENT_SIGN,
                  csInf, csNan, 'e', DCONV_DECIMAL_IN_SHORTEST_LOW, DCONV_DECIMAL_IN_SHORTEST_HIGH, 0, 0);
 
   PRINTMARK();
